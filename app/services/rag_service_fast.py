@@ -1,17 +1,31 @@
 ﻿import hashlib
 import json
 import logging
+import re
 import time
+from html import unescape as html_unescape
 from typing import Iterator
+from urllib.parse import parse_qs, unquote, urlparse
 
 from langchain_core.documents import Document
 
 from app.core.config import get_settings
 from app.db.postgres import SessionLocal
 from app.models.chat_log import ChatLog
-from app.services.dependencies import get_llm, get_redis_client, get_streaming_llm, get_vector_store
+from app.services.dependencies import get_llm, get_redis_client, get_vector_store
 
 logger = logging.getLogger(__name__)
+
+UNKNOWN_MARKERS = (
+    "i don't know",
+    'i do not know',
+    'unknown',
+    'not sure',
+    '我不知道',
+    '不知道',
+    '不清楚',
+    '无法确定',
+)
 
 
 def _trim_doc_text(text: str, limit: int) -> str:
@@ -29,11 +43,30 @@ def _build_prompt(question: str, docs: list[Document], context_chars_per_doc: in
         context_lines.append(f'[{idx}] source={source}\n{excerpt}')
     context = '\n\n'.join(context_lines)
     return (
-        'You are a knowledge-base assistant. Answer strictly based on the given context. '
-        "If the context is insufficient, reply exactly: I don't know. "
-        'Keep the answer concise and cite source indices like [1][2].\n\n'
-        f'Question: {question}\n\n'
-        f'Context:\n{context}'
+        '你是知识库问答助手。必须使用简体中文回答。'
+        '仅基于给定上下文作答；若上下文不足，请只回复：我不知道。'
+        '回答保持简洁，并在句末标注引用编号，如 [1][2]。\n\n'
+        f'问题：{question}\n\n'
+        f'上下文：\n{context}'
+    )
+
+
+def _build_web_prompt(question: str, web_results: list[dict[str, str]]) -> str:
+    references: list[str] = []
+    for idx, item in enumerate(web_results, start=1):
+        title = item.get('title', 'untitled')
+        url = item.get('url', '')
+        snippet = item.get('snippet', '')
+        references.append(f'[{idx}] title={title}\nurl={url}\nsnippet={snippet}')
+
+    context = '\n\n'.join(references)
+    return (
+        '你是联网检索问答助手。必须使用简体中文回答。'
+        '请基于提供的网页摘要回答问题，优先给出事实性、直接的结论。'
+        '若信息冲突，请简要说明不确定性。'
+        '答案末尾附上引用编号及对应URL。\n\n'
+        f'问题：{question}\n\n'
+        f'网页摘要：\n{context}'
     )
 
 
@@ -41,6 +74,300 @@ def _cache_key(question: str) -> str:
     normalized_question = ' '.join(question.strip().split())
     digest = hashlib.md5(normalized_question.encode('utf-8')).hexdigest()
     return f'qa:{digest}'
+
+
+def _looks_unknown(answer: str) -> bool:
+    normalized = ' '.join(answer.lower().split())
+    return any(marker in normalized for marker in UNKNOWN_MARKERS)
+
+
+def _normalize_cn_answer(answer: str) -> str:
+    if not answer:
+        return answer
+    if _looks_unknown(answer):
+        return '我不知道'
+    return answer
+
+
+def _clean_html_text(raw: str) -> str:
+    text = re.sub(r'<[^>]+>', '', raw or '')
+    text = html_unescape(text)
+    return ' '.join(text.split()).strip()
+
+
+def _query_tokens(query: str) -> list[str]:
+    q = (query or '').lower()
+    words = [w for w in re.split(r'[^0-9a-z\u4e00-\u9fff]+', q) if len(w) >= 2]
+    chinese = ''.join(ch for ch in q if '\u4e00' <= ch <= '\u9fff')
+    bigrams = [chinese[i : i + 2] for i in range(len(chinese) - 1)]
+    # Keep uniqueness but preserve order.
+    seen: set[str] = set()
+    tokens: list[str] = []
+    for t in words + bigrams:
+        if t not in seen:
+            seen.add(t)
+            tokens.append(t)
+    return tokens
+
+
+def _result_score(query: str, item: dict[str, str]) -> int:
+    hay = f"{item.get('title', '')} {item.get('snippet', '')}".lower()
+    score = 0
+    for token in _query_tokens(query):
+        if token and token in hay:
+            score += 2 if len(token) >= 4 else 1
+    return score
+
+
+def _filter_relevant_results(query: str, results: list[dict[str, str]]) -> list[dict[str, str]]:
+    if not results:
+        return []
+    scored = [(item, _result_score(query, item)) for item in results]
+    best = max(score for _, score in scored)
+    # If all scores are 0, treat as irrelevant provider output and fallback.
+    if best <= 0:
+        return []
+    # Keep reasonably related results.
+    return [item for item, score in scored if score > 0]
+
+
+def _parse_bing_results(html: str, max_results: int) -> list[dict[str, str]]:
+    blocks = re.findall(r'<li[^>]*class="[^\"]*b_algo[^\"]*"[^>]*>(.*?)</li>', html, flags=re.IGNORECASE | re.DOTALL)
+    results: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for block in blocks:
+        link_match = re.search(r'<h2[^>]*>\s*<a[^>]*href="([^\"]+)"[^>]*>(.*?)</a>', block, flags=re.IGNORECASE | re.DOTALL)
+        if not link_match:
+            continue
+        url = link_match.group(1).strip()
+        if not (url.startswith('http://') or url.startswith('https://')):
+            continue
+        if url in seen:
+            continue
+        seen.add(url)
+        title = _clean_html_text(link_match.group(2))
+        snippet_match = re.search(r'<p[^>]*>(.*?)</p>', block, flags=re.IGNORECASE | re.DOTALL)
+        snippet = _clean_html_text(snippet_match.group(1)) if snippet_match else ''
+        results.append({'title': title, 'url': url, 'snippet': snippet})
+        if len(results) >= max_results:
+            break
+    return results
+
+
+def _parse_baidu_results(html: str, max_results: int) -> list[dict[str, str]]:
+    blocks = re.findall(r'<h3[^>]*class="[^\"]*t[^\"]*"[^>]*>(.*?)</h3>', html, flags=re.IGNORECASE | re.DOTALL)
+    results: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for block in blocks:
+        link_match = re.search(r'<a[^>]*href="([^\"]+)"[^>]*>(.*?)</a>', block, flags=re.IGNORECASE | re.DOTALL)
+        if not link_match:
+            continue
+        url = link_match.group(1).strip()
+        if not (url.startswith('http://') or url.startswith('https://')):
+            continue
+        if url in seen:
+            continue
+        seen.add(url)
+        title = _clean_html_text(link_match.group(2))
+        results.append({'title': title, 'url': url, 'snippet': ''})
+        if len(results) >= max_results:
+            break
+    return results
+
+
+def _parse_duckduckgo_results(html: str, max_results: int) -> list[dict[str, str]]:
+    matches = re.findall(
+        r'<a[^>]*class="[^\"]*result__a[^\"]*"[^>]*href="([^\"]+)"[^>]*>(.*?)</a>',
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    results: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for raw_url, raw_title in matches:
+        url = raw_url.strip()
+        if '/l/?' in url:
+            parsed = urlparse(url)
+            qs = parse_qs(parsed.query)
+            uddg = qs.get('uddg', [])
+            if uddg:
+                url = unquote(uddg[0])
+        if not (url.startswith('http://') or url.startswith('https://')):
+            continue
+        if url in seen:
+            continue
+        seen.add(url)
+        title = _clean_html_text(raw_title)
+        results.append({'title': title, 'url': url, 'snippet': ''})
+        if len(results) >= max_results:
+            break
+    return results
+
+
+def _search_tavily(question: str, max_results: int) -> list[dict[str, str]]:
+    settings = get_settings()
+    if not settings.TAVILY_API_KEY:
+        return []
+
+    try:
+        import httpx
+
+        response = httpx.post(
+            'https://api.tavily.com/search',
+            json={
+                'api_key': settings.TAVILY_API_KEY,
+                'query': question,
+                'max_results': max_results,
+                'include_answer': False,
+                'include_images': False,
+                'search_depth': 'basic',
+            },
+            timeout=settings.WEB_SEARCH_TIMEOUT_SECONDS,
+            follow_redirects=True,
+            trust_env=settings.WEB_SEARCH_TRUST_ENV,
+        )
+        if response.status_code >= 400:
+            logger.warning('tavily search failed status=%s', response.status_code)
+            return []
+        payload = response.json()
+        rows = payload.get('results', []) if isinstance(payload, dict) else []
+        results: list[dict[str, str]] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            url = str(row.get('url') or '').strip()
+            if not url:
+                continue
+            results.append(
+                {
+                    'title': str(row.get('title') or ''),
+                    'url': url,
+                    'snippet': str(row.get('content') or ''),
+                }
+            )
+            if len(results) >= max_results:
+                break
+        return results
+    except Exception:
+        logger.exception('tavily search failed')
+        return []
+
+
+def _search_web(question: str, max_results: int) -> list[dict[str, str]]:
+    settings = get_settings()
+    provider = settings.WEB_SEARCH_PROVIDER.lower().strip()
+
+    # Optional SDK path for DuckDuckGo when installed.
+    try:
+        if provider in ('auto', 'duckduckgo', 'ddg'):
+            from duckduckgo_search import DDGS
+
+            with DDGS() as ddgs:
+                rows = ddgs.text(question, max_results=max_results)
+                if rows:
+                    results: list[dict[str, str]] = []
+                    for row in rows:
+                        if not isinstance(row, dict):
+                            continue
+                        url = str(row.get('href') or '').strip()
+                        if not url:
+                            continue
+                        results.append(
+                            {
+                                'title': str(row.get('title') or ''),
+                                'url': url,
+                                'snippet': str(row.get('body') or ''),
+                            }
+                        )
+                    if results:
+                        return results[:max_results]
+    except Exception:
+        logger.info('duckduckgo sdk unavailable, continue with html providers')
+
+    providers = [provider] if provider != 'auto' else ['bing', 'tavily', 'baidu', 'duckduckgo']
+    try:
+        import httpx
+
+        with httpx.Client(
+            timeout=settings.WEB_SEARCH_TIMEOUT_SECONDS,
+            follow_redirects=True,
+            trust_env=settings.WEB_SEARCH_TRUST_ENV,
+            headers={'User-Agent': 'Mozilla/5.0'},
+        ) as client:
+            for p in providers:
+                try:
+                    if p == 'baidu':
+                        r = client.get('https://www.baidu.com/s', params={'wd': question})
+                        results = _filter_relevant_results(
+                            question, _parse_baidu_results(r.text, max_results=max_results)
+                        )
+                        if results:
+                            logger.info('web_search provider=baidu results=%d', len(results))
+                            return results
+                    elif p == 'bing':
+                        market = 'zh-CN' if settings.WEB_SEARCH_LOCALE.startswith('zh') else 'en-US'
+                        r = client.get(
+                            'https://www.bing.com/search',
+                            params={'q': question, 'setlang': market, 'mkt': market},
+                        )
+                        results = _filter_relevant_results(
+                            question, _parse_bing_results(r.text, max_results=max_results)
+                        )
+                        if results:
+                            logger.info('web_search provider=bing results=%d', len(results))
+                            return results
+                    elif p == 'tavily':
+                        results = _filter_relevant_results(
+                            question, _search_tavily(question, max_results=max_results)
+                        )
+                        if results:
+                            logger.info('web_search provider=tavily results=%d', len(results))
+                            return results
+                    elif p in ('duckduckgo', 'ddg'):
+                        r = client.get('https://duckduckgo.com/html/', params={'q': question, 'kl': 'cn-zh'})
+                        results = _filter_relevant_results(
+                            question, _parse_duckduckgo_results(r.text, max_results=max_results)
+                        )
+                        if results:
+                            logger.info('web_search provider=duckduckgo_html results=%d', len(results))
+                            return results
+                    else:
+                        logger.warning('web_search unknown provider=%s', p)
+                except Exception:
+                    logger.exception('web_search provider failed: %s', p)
+                    continue
+        return []
+    except Exception:
+        logger.exception('web_search failed')
+        return []
+
+
+def _answer_with_fallback(question: str, docs: list[Document]) -> tuple[str, list[str], str]:
+    settings = get_settings()
+    llm = get_llm()
+
+    if docs:
+        selected_docs = docs[: settings.ANSWER_TOP_K]
+        prompt = _build_prompt(question, selected_docs, settings.CONTEXT_CHARS_PER_DOC)
+        answer = llm.invoke(prompt).content or ''
+        answer = _normalize_cn_answer(answer)
+        sources = list(dict.fromkeys(doc.metadata.get('source', 'unknown') for doc in docs))
+        if not settings.ENABLE_WEB_FALLBACK or not _looks_unknown(answer):
+            return answer, sources, 'kb'
+    else:
+        answer = ''
+
+    if settings.ENABLE_WEB_FALLBACK:
+        web_results = _search_web(question, max_results=settings.WEB_SEARCH_MAX_RESULTS)
+        if web_results:
+            web_prompt = _build_web_prompt(question, web_results)
+            web_answer = llm.invoke(web_prompt).content or ''
+            web_answer = _normalize_cn_answer(web_answer)
+            web_sources = [item['url'] for item in web_results]
+            return web_answer, web_sources, 'web'
+
+    if answer:
+        return _normalize_cn_answer(answer), [], 'kb_unknown'
+    return '未命中本地知识库，且联网检索暂不可用，请稍后重试。', [], 'fallback_unavailable'
 
 
 def ask(question: str) -> tuple[str, list[str], bool]:
@@ -59,32 +386,28 @@ def ask(question: str) -> tuple[str, list[str], bool]:
     retriever = vector_store.as_retriever(search_kwargs={'k': settings.TOP_K})
     docs = retriever.invoke(question)
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000
-    if not docs:
-        answer = 'Knowledge base is not indexed yet. Please run /api/v1/ingest/reindex.'
-        logger.warning('rag.ask empty_docs=True retrieve_ms=%.2f', retrieve_ms)
-        return answer, [], False
 
-    selected_docs = docs[: settings.ANSWER_TOP_K]
-    prompt = _build_prompt(question, selected_docs, settings.CONTEXT_CHARS_PER_DOC)
+    answer, sources, mode = _answer_with_fallback(question, docs)
+    answer = _normalize_cn_answer(answer)
 
-    llm_start = time.perf_counter()
-    llm = get_llm()
-    answer = llm.invoke(prompt).content
-    llm_ms = (time.perf_counter() - llm_start) * 1000
-    sources = list(dict.fromkeys(doc.metadata.get('source', 'unknown') for doc in docs))
-
-    redis_client.setex(cache_key, settings.CACHE_TTL_SECONDS, json.dumps({'answer': answer, 'sources': sources}))
+    # Do not cache unknown answers; otherwise temporary network issues can poison cache.
+    if not _looks_unknown(answer):
+        redis_client.setex(cache_key, settings.CACHE_TTL_SECONDS, json.dumps({'answer': answer, 'sources': sources}))
     logger.info(
-        'rag.ask cache_hit=False retrieve_ms=%.2f llm_ms=%.2f total_ms=%.2f docs=%d selected_docs=%d top_k=%d answer_top_k=%d',
+        'rag.ask cache_hit=False mode=%s retrieve_ms=%.2f total_ms=%.2f docs=%d',
+        mode,
         retrieve_ms,
-        llm_ms,
         (time.perf_counter() - total_start) * 1000,
         len(docs),
-        len(selected_docs),
-        settings.TOP_K,
-        settings.ANSWER_TOP_K,
     )
     return answer, sources, False
+
+
+def _chunk_text(text: str, chunk_size: int = 24) -> Iterator[str]:
+    if not text:
+        return
+    for i in range(0, len(text), chunk_size):
+        yield text[i:i + chunk_size]
 
 
 def ask_stream(question: str) -> tuple[list[str], Iterator[str]]:
@@ -96,39 +419,20 @@ def ask_stream(question: str) -> tuple[list[str], Iterator[str]]:
     retrieve_start = time.perf_counter()
     docs = retriever.invoke(question)
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000
-    if not docs:
-        logger.warning('rag.ask_stream empty_docs=True retrieve_ms=%.2f', retrieve_ms)
 
-        def _empty_stream() -> Iterator[str]:
-            yield 'Knowledge base is not indexed yet. Please run /api/v1/ingest/reindex.'
-
-        return [], _empty_stream()
-
-    selected_docs = docs[: settings.ANSWER_TOP_K]
-    prompt = _build_prompt(question, selected_docs, settings.CONTEXT_CHARS_PER_DOC)
-    llm = get_streaming_llm()
-    sources = list(dict.fromkeys(doc.metadata.get('source', 'unknown') for doc in docs))
+    answer, sources, mode = _answer_with_fallback(question, docs)
+    answer = _normalize_cn_answer(answer)
 
     def _stream() -> Iterator[str]:
-        llm_start = time.perf_counter()
-        first_token_ms: float | None = None
-
-        for chunk in llm.stream(prompt):
-            text = chunk.content or ''
-            if text:
-                if first_token_ms is None:
-                    first_token_ms = (time.perf_counter() - llm_start) * 1000
-                yield text
+        for chunk in _chunk_text(answer):
+            yield chunk
 
         logger.info(
-            'rag.ask_stream retrieve_ms=%.2f first_token_ms=%.2f total_ms=%.2f docs=%d selected_docs=%d top_k=%d answer_top_k=%d',
+            'rag.ask_stream mode=%s retrieve_ms=%.2f total_ms=%.2f docs=%d',
+            mode,
             retrieve_ms,
-            first_token_ms or -1.0,
             (time.perf_counter() - total_start) * 1000,
             len(docs),
-            len(selected_docs),
-            settings.TOP_K,
-            settings.ANSWER_TOP_K,
         )
 
     return sources, _stream()

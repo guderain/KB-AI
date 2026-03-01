@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     TOP_K: int = 6
     ANSWER_TOP_K: int = 4
     CONTEXT_CHARS_PER_DOC: int = 800
+    ENABLE_WEB_FALLBACK: bool = True
+    WEB_SEARCH_PROVIDER: str = 'auto'
+    WEB_SEARCH_LOCALE: str = 'zh-CN'
+    WEB_SEARCH_MAX_RESULTS: int = 5
+    WEB_SEARCH_TIMEOUT_SECONDS: float = 12.0
+    WEB_SEARCH_TRUST_ENV: bool = True
+    TAVILY_API_KEY: str = ''
 
     CORS_ORIGINS: str = 'http://localhost:3000,http://127.0.0.1:3000'
     API_KEYS: str = ''

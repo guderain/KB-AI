@@ -1,24 +1,101 @@
-2026-03-01 07:41:00 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
-2026-03-01 07:41:00 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
-2026-03-01 07:42:18 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=584.78 first_token_ms=76857.62 total_ms=81484.03 docs=6 selected_docs=4 top_k=6 answer_top_k=4
-2026-03-01 07:48:43 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
-2026-03-01 07:48:43 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
-2026-03-01 07:49:52 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=427.35 first_token_ms=65996.53 total_ms=71654.08 docs=4 selected_docs=4 top_k=4 answer_top_k=4
-2026-03-01 07:54:25 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
-2026-03-01 07:54:26 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
-2026-03-01 07:54:31 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=378.66 first_token_ms=334.08 total_ms=7596.65 docs=4 selected_docs=4 top_k=4 answer_top_k=4
-2026-03-01 07:56:00 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
-2026-03-01 07:56:01 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
-2026-03-01 07:56:06 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=502.60 first_token_ms=305.13 total_ms=8487.80 docs=6 selected_docs=4 top_k=6 answer_top_k=4
-2026-03-01 08:02:02 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
-2026-03-01 08:02:03 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
-2026-03-01 08:02:08 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=619.15 first_token_ms=315.75 total_ms=5998.61 docs=6 selected_docs=4 top_k=6 answer_top_k=4
-2026-03-01 08:03:39 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
-2026-03-01 08:03:39 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
-2026-03-01 08:03:44 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=476.70 first_token_ms=355.78 total_ms=5365.59 docs=6 selected_docs=4 top_k=6 answer_top_k=4
-2026-03-01 08:06:35 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
-2026-03-01 08:06:36 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
-2026-03-01 08:06:36 | INFO | app.services.rag_service_fast | rag.ask cache_hit=False retrieve_ms=380.55 llm_ms=575.49 total_ms=965.15 docs=6 selected_docs=4 top_k=6 answer_top_k=4
-2026-03-01 08:37:27 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
-2026-03-01 08:37:27 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
-2026-03-01 08:37:33 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=576.85 first_token_ms=371.68 total_ms=6228.56 docs=6 selected_docs=4 top_k=6 answer_top_k=4
+2026-03-02 00:00:13 | INFO | app.main | startup.auto_ingest triggered=False reason=no_markdown_files files_total=0 chunks_inserted=0
+2026-03-02 00:00:43 | INFO | app.main | startup.auto_ingest triggered=False reason=no_markdown_files files_total=0 chunks_inserted=0
+2026-03-02 00:01:46 | WARNING | langchain_milvus.vectorstores.milvus | No index params provided. Could not determine relevance function. Use L2 distance as default.
+2026-03-02 00:01:46 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:01:46 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:01:50 | INFO | app.services.rag_service_fast | rag.ask_stream mode=kb retrieve_ms=2509.78 first_token_ms=298.38 total_ms=6841.83 docs=6 selected_docs=4 top_k=6 answer_top_k=4
+2026-03-02 00:20:05 | WARNING | langchain_milvus.vectorstores.milvus | No index params provided. Could not determine relevance function. Use L2 distance as default.
+2026-03-02 00:20:06 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:20:06 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:20:06 | INFO | app.services.rag_service_fast | rag.ask_stream mode=kb retrieve_ms=660.68 first_token_ms=433.42 total_ms=1199.98 docs=6 selected_docs=4 top_k=6 answer_top_k=4
+2026-03-02 00:21:05 | WARNING | langchain_milvus.vectorstores.milvus | No index params provided. Could not determine relevance function. Use L2 distance as default.
+2026-03-02 00:21:05 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:21:06 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:21:14 | INFO | app.services.rag_service_fast | rag.ask_stream mode=kb retrieve_ms=434.92 first_token_ms=307.45 total_ms=9238.45 docs=6 selected_docs=4 top_k=6 answer_top_k=4
+2026-03-02 00:26:10 | WARNING | langchain_milvus.vectorstores.milvus | No index params provided. Could not determine relevance function. Use L2 distance as default.
+2026-03-02 00:26:10 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:26:10 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:26:13 | INFO | app.services.rag_service_fast | rag.ask_stream mode=kb retrieve_ms=363.65 first_token_ms=287.48 total_ms=3843.80 docs=6 selected_docs=4 top_k=6 answer_top_k=4
+2026-03-02 00:39:05 | INFO | app.main | startup.auto_ingest triggered=False reason=no_markdown_files files_total=0 chunks_inserted=0
+2026-03-02 00:39:07 | INFO | app.main | startup.auto_ingest triggered=False reason=no_markdown_files files_total=0 chunks_inserted=0
+2026-03-02 00:39:17 | INFO | app.main | startup.auto_ingest triggered=False reason=no_markdown_files files_total=0 chunks_inserted=0
+2026-03-02 00:40:19 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:40:19 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:40:19 | WARNING | app.services.rag_service_fast | web_search unavailable: duckduckgo_search not installed
+2026-03-02 00:40:19 | INFO | app.services.rag_service_fast | rag.ask_stream mode=kb_unknown retrieve_ms=556.45 total_ms=3422.26 docs=6
+2026-03-02 00:41:20 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:41:21 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:41:21 | WARNING | app.services.rag_service_fast | web_search unavailable: duckduckgo_search not installed
+2026-03-02 00:41:21 | INFO | app.services.rag_service_fast | rag.ask_stream mode=kb_unknown retrieve_ms=402.43 total_ms=746.38 docs=6
+2026-03-02 00:41:37 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:41:37 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:41:37 | WARNING | app.services.rag_service_fast | web_search unavailable: duckduckgo_search not installed
+2026-03-02 00:41:37 | INFO | app.services.rag_service_fast | rag.ask cache_hit=False mode=kb_unknown retrieve_ms=358.47 total_ms=737.51 docs=6
+2026-03-02 00:42:06 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:42:12 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:42:12 | INFO | app.services.rag_service_fast | rag.ask_stream mode=kb retrieve_ms=237.26 total_ms=6462.19 docs=6
+2026-03-02 00:42:19 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:42:25 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:42:25 | INFO | app.services.rag_service_fast | rag.ask_stream mode=kb retrieve_ms=367.18 total_ms=6417.35 docs=6
+2026-03-02 00:47:48 | INFO | app.main | startup.auto_ingest triggered=False reason=collection_ready files_total=78 chunks_inserted=0
+2026-03-02 00:49:13 | INFO | app.services.ingestion_service | startup.ingest triggered=True reason=collection_empty_or_missing files_total=78 chunks_inserted=0 chunks_deleted=0
+2026-03-02 00:49:13 | INFO | app.main | startup.auto_ingest triggered=True reason=collection_empty_or_missing files_total=78 chunks_inserted=0
+2026-03-02 00:49:43 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:49:49 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:49:49 | INFO | app.services.rag_service_fast | rag.ask_stream mode=kb retrieve_ms=367.07 total_ms=8210.11 docs=6
+2026-03-02 00:50:38 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:50:40 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:50:40 | INFO | app.services.rag_service_fast | rag.ask_stream mode=kb retrieve_ms=394.91 total_ms=1879.14 docs=6
+2026-03-02 00:52:46 | INFO | app.services.ingestion_service | startup.ingest triggered=True reason=collection_empty_or_missing files_total=78 chunks_inserted=0 chunks_deleted=0
+2026-03-02 00:52:46 | INFO | app.main | startup.auto_ingest triggered=True reason=collection_empty_or_missing files_total=78 chunks_inserted=0
+2026-03-02 00:53:15 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:53:15 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:53:15 | WARNING | app.services.rag_service_fast | web_search unavailable: duckduckgo_search not installed
+2026-03-02 00:53:15 | INFO | app.services.rag_service_fast | rag.ask_stream mode=kb_unknown retrieve_ms=377.59 total_ms=2576.51 docs=6
+2026-03-02 00:53:36 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 00:53:37 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 00:53:37 | WARNING | app.services.rag_service_fast | web_search unavailable: duckduckgo_search not installed
+2026-03-02 00:53:37 | INFO | app.services.rag_service_fast | rag.ask cache_hit=False mode=kb_unknown retrieve_ms=253.12 total_ms=583.48 docs=6
+2026-03-02 01:18:23 | INFO | app.main | startup.auto_ingest triggered=False reason=collection_ready files_total=78 chunks_inserted=0
+2026-03-02 01:19:59 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 01:20:00 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 01:20:00 | INFO | app.services.rag_service_fast | duckduckgo sdk unavailable, continue with html providers
+2026-03-02 01:20:01 | INFO | httpx | HTTP Request: GET https://www.bing.com/search?q=%E9%B3%97%E9%B1%BC%E9%A5%AD%E6%80%8E%E4%B9%88%E5%81%9A&setlang=zh-CN "HTTP/1.1 302 Found"
+2026-03-02 01:20:01 | INFO | httpx | HTTP Request: GET https://cn.bing.com/search?q=%E9%B3%97%E9%B1%BC%E9%A5%AD%E6%80%8E%E4%B9%88%E5%81%9A&setlang=zh-CN "HTTP/1.1 200 OK"
+2026-03-02 01:20:01 | INFO | app.services.rag_service_fast | web_search provider=bing results=5
+2026-03-02 01:20:07 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 01:20:07 | INFO | app.services.rag_service_fast | rag.ask_stream mode=web retrieve_ms=494.98 total_ms=10572.57 docs=6
+2026-03-02 01:21:22 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 01:21:23 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 01:21:23 | INFO | app.services.rag_service_fast | duckduckgo sdk unavailable, continue with html providers
+2026-03-02 01:21:24 | INFO | httpx | HTTP Request: GET https://www.bing.com/search?q=%E7%82%92%E9%A5%AD%E6%80%8E%E4%B9%88%E5%81%9A&setlang=zh-CN "HTTP/1.1 302 Found"
+2026-03-02 01:21:24 | INFO | httpx | HTTP Request: GET https://cn.bing.com/search?q=%E7%82%92%E9%A5%AD%E6%80%8E%E4%B9%88%E5%81%9A&setlang=zh-CN "HTTP/1.1 200 OK"
+2026-03-02 01:21:24 | INFO | app.services.rag_service_fast | web_search provider=bing results=5
+2026-03-02 01:21:37 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 01:21:37 | INFO | app.services.rag_service_fast | rag.ask_stream mode=web retrieve_ms=265.75 total_ms=14400.09 docs=6
+2026-03-02 01:22:05 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 01:22:05 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 01:22:05 | INFO | app.services.rag_service_fast | duckduckgo sdk unavailable, continue with html providers
+2026-03-02 01:22:06 | INFO | httpx | HTTP Request: GET https://www.bing.com/search?q=%E9%B3%97%E9%B1%BC%E9%A5%AD%E6%80%8E%E4%B9%88%E5%81%9A&setlang=zh-CN "HTTP/1.1 302 Found"
+2026-03-02 01:22:07 | INFO | httpx | HTTP Request: GET https://cn.bing.com/search?q=%E9%B3%97%E9%B1%BC%E9%A5%AD%E6%80%8E%E4%B9%88%E5%81%9A&setlang=zh-CN "HTTP/1.1 200 OK"
+2026-03-02 01:22:07 | INFO | app.services.rag_service_fast | web_search provider=bing results=5
+2026-03-02 01:22:12 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 01:22:12 | INFO | app.services.rag_service_fast | rag.ask_stream mode=web retrieve_ms=258.50 total_ms=6998.76 docs=6
+2026-03-02 01:24:21 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 01:24:22 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 01:24:22 | INFO | app.services.rag_service_fast | duckduckgo sdk unavailable, continue with html providers
+2026-03-02 01:24:23 | INFO | httpx | HTTP Request: GET https://www.bing.com/search?q=%E9%B3%97%E9%B1%BC%E9%A5%AD%E6%80%8E%E4%B9%88%E5%81%9A&setlang=zh-CN "HTTP/1.1 302 Found"
+2026-03-02 01:24:23 | INFO | httpx | HTTP Request: GET https://cn.bing.com/search?q=%E9%B3%97%E9%B1%BC%E9%A5%AD%E6%80%8E%E4%B9%88%E5%81%9A&setlang=zh-CN "HTTP/1.1 200 OK"
+2026-03-02 01:24:23 | INFO | app.services.rag_service_fast | web_search provider=bing results=5
+2026-03-02 01:24:27 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 01:24:27 | INFO | app.services.rag_service_fast | rag.ask cache_hit=False mode=web retrieve_ms=297.26 total_ms=5601.10 docs=6
+2026-03-02 01:27:33 | INFO | app.main | startup.auto_ingest triggered=False reason=collection_ready files_total=78 chunks_inserted=0
+2026-03-02 01:28:32 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-02 01:28:33 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 01:28:33 | INFO | app.services.rag_service_fast | duckduckgo sdk unavailable, continue with html providers
+2026-03-02 01:28:34 | INFO | httpx | HTTP Request: GET https://www.bing.com/search?q=%E9%B3%97%E9%B1%BC%E9%A5%AD%E6%80%8E%E4%B9%88%E5%81%9A&setlang=zh-CN&mkt=zh-CN "HTTP/1.1 302 Found"
+2026-03-02 01:28:34 | INFO | httpx | HTTP Request: GET https://cn.bing.com/search?q=%E9%B3%97%E9%B1%BC%E9%A5%AD%E6%80%8E%E4%B9%88%E5%81%9A&setlang=zh-CN&mkt=zh-CN "HTTP/1.1 200 OK"
+2026-03-02 01:28:37 | INFO | httpx | HTTP Request: POST https://api.tavily.com/search "HTTP/1.1 200 OK"
+2026-03-02 01:28:37 | INFO | app.services.rag_service_fast | web_search provider=tavily results=5
+2026-03-02 01:28:44 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-02 01:28:44 | INFO | app.services.rag_service_fast | rag.ask_stream mode=web retrieve_ms=390.78 total_ms=14349.00 docs=6
