@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     WEB_SEARCH_LOCALE: str = 'zh-CN'
     WEB_SEARCH_MAX_RESULTS: int = 5
     WEB_SEARCH_TIMEOUT_SECONDS: float = 12.0
+    WEB_SEARCH_PROVIDER_TIMEOUT_SECONDS: float = 30.0
+    WEB_SEARCH_TOTAL_TIMEOUT_SECONDS: float = 40.0
     WEB_SEARCH_TRUST_ENV: bool = True
     TAVILY_API_KEY: str = ''
 

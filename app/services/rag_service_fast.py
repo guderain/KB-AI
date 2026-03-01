@@ -203,7 +203,7 @@ def _parse_duckduckgo_results(html: str, max_results: int) -> list[dict[str, str
     return results
 
 
-def _search_tavily(question: str, max_results: int) -> list[dict[str, str]]:
+def _search_tavily(question: str, max_results: int, timeout_seconds: float | None = None) -> list[dict[str, str]]:
     settings = get_settings()
     if not settings.TAVILY_API_KEY:
         return []
@@ -221,7 +221,7 @@ def _search_tavily(question: str, max_results: int) -> list[dict[str, str]]:
                 'include_images': False,
                 'search_depth': 'basic',
             },
-            timeout=settings.WEB_SEARCH_TIMEOUT_SECONDS,
+            timeout=timeout_seconds or settings.WEB_SEARCH_TIMEOUT_SECONDS,
             follow_redirects=True,
             trust_env=settings.WEB_SEARCH_TRUST_ENV,
         )
@@ -255,6 +255,14 @@ def _search_tavily(question: str, max_results: int) -> list[dict[str, str]]:
 def _search_web(question: str, max_results: int) -> list[dict[str, str]]:
     settings = get_settings()
     provider = settings.WEB_SEARCH_PROVIDER.lower().strip()
+    started_at = time.monotonic()
+    total_budget = max(1.0, settings.WEB_SEARCH_TOTAL_TIMEOUT_SECONDS)
+
+    def _remaining_timeout() -> float:
+        elapsed = time.monotonic() - started_at
+        left = total_budget - elapsed
+        # Keep a small but usable timeout slice for each provider call.
+        return max(0.6, min(settings.WEB_SEARCH_PROVIDER_TIMEOUT_SECONDS, left))
 
     # Optional SDK path for DuckDuckGo when installed.
     try:
@@ -288,15 +296,19 @@ def _search_web(question: str, max_results: int) -> list[dict[str, str]]:
         import httpx
 
         with httpx.Client(
-            timeout=settings.WEB_SEARCH_TIMEOUT_SECONDS,
+            timeout=settings.WEB_SEARCH_PROVIDER_TIMEOUT_SECONDS,
             follow_redirects=True,
             trust_env=settings.WEB_SEARCH_TRUST_ENV,
             headers={'User-Agent': 'Mozilla/5.0'},
         ) as client:
             for p in providers:
+                if (time.monotonic() - started_at) >= total_budget:
+                    logger.warning('web_search timeout budget exhausted, stop providers')
+                    break
                 try:
+                    request_timeout = _remaining_timeout()
                     if p == 'baidu':
-                        r = client.get('https://www.baidu.com/s', params={'wd': question})
+                        r = client.get('https://www.baidu.com/s', params={'wd': question}, timeout=request_timeout)
                         results = _filter_relevant_results(
                             question, _parse_baidu_results(r.text, max_results=max_results)
                         )
@@ -308,6 +320,7 @@ def _search_web(question: str, max_results: int) -> list[dict[str, str]]:
                         r = client.get(
                             'https://www.bing.com/search',
                             params={'q': question, 'setlang': market, 'mkt': market},
+                            timeout=request_timeout,
                         )
                         results = _filter_relevant_results(
                             question, _parse_bing_results(r.text, max_results=max_results)
@@ -317,13 +330,22 @@ def _search_web(question: str, max_results: int) -> list[dict[str, str]]:
                             return results
                     elif p == 'tavily':
                         results = _filter_relevant_results(
-                            question, _search_tavily(question, max_results=max_results)
+                            question,
+                            _search_tavily(
+                                question,
+                                max_results=max_results,
+                                timeout_seconds=request_timeout,
+                            ),
                         )
                         if results:
                             logger.info('web_search provider=tavily results=%d', len(results))
                             return results
                     elif p in ('duckduckgo', 'ddg'):
-                        r = client.get('https://duckduckgo.com/html/', params={'q': question, 'kl': 'cn-zh'})
+                        r = client.get(
+                            'https://duckduckgo.com/html/',
+                            params={'q': question, 'kl': 'cn-zh'},
+                            timeout=request_timeout,
+                        )
                         results = _filter_relevant_results(
                             question, _parse_duckduckgo_results(r.text, max_results=max_results)
                         )
