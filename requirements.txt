@@ -1,0 +1,16 @@
+fastapi==0.115.8
+uvicorn[standard]==0.34.0
+pydantic==2.10.6
+pydantic-settings==2.7.1
+langchain==0.3.18
+langchain-openai==0.3.6
+langchain-community==0.3.17
+langchain-milvus==0.1.8
+langchain-text-splitters==0.3.6
+pymilvus==2.5.4
+redis==5.2.1
+sqlalchemy==2.0.37
+psycopg[binary]==3.2.9
+python-dotenv==1.0.1
+markdown==3.7
+setuptools<81

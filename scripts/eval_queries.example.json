@@ -1,0 +1,23 @@
+[
+  {
+    "question": "NotionNext 是什么？",
+    "expected_source_keyword": "NotionNext介绍"
+  },
+  {
+    "question": "NotionNext 有哪些基础操作说明？",
+    "expected_source_keyword": "NotionNext操作说明"
+  },
+  {
+    "question": "Milvus 在 RAG 里通常怎么用？",
+    "expected_source_keyword": "Milvus与RAG"
+  },
+  {
+    "question": "Rerank 在检索链路中的作用是什么？",
+    "expected_source_keyword": "Rerank"
+  },
+  {
+    "question": "Chunk 和 Retrieval 的最佳实践有哪些？",
+    "expected_source_keyword": "Chunk与Retrieval"
+  }
+]
+

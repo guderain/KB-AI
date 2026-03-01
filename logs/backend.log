@@ -1,0 +1,24 @@
+2026-03-01 07:41:00 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-01 07:41:00 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-01 07:42:18 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=584.78 first_token_ms=76857.62 total_ms=81484.03 docs=6 selected_docs=4 top_k=6 answer_top_k=4
+2026-03-01 07:48:43 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-01 07:48:43 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-01 07:49:52 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=427.35 first_token_ms=65996.53 total_ms=71654.08 docs=4 selected_docs=4 top_k=4 answer_top_k=4
+2026-03-01 07:54:25 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-01 07:54:26 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-01 07:54:31 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=378.66 first_token_ms=334.08 total_ms=7596.65 docs=4 selected_docs=4 top_k=4 answer_top_k=4
+2026-03-01 07:56:00 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-01 07:56:01 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-01 07:56:06 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=502.60 first_token_ms=305.13 total_ms=8487.80 docs=6 selected_docs=4 top_k=6 answer_top_k=4
+2026-03-01 08:02:02 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-01 08:02:03 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-01 08:02:08 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=619.15 first_token_ms=315.75 total_ms=5998.61 docs=6 selected_docs=4 top_k=6 answer_top_k=4
+2026-03-01 08:03:39 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-01 08:03:39 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-01 08:03:44 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=476.70 first_token_ms=355.78 total_ms=5365.59 docs=6 selected_docs=4 top_k=6 answer_top_k=4
+2026-03-01 08:06:35 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-01 08:06:36 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-01 08:06:36 | INFO | app.services.rag_service_fast | rag.ask cache_hit=False retrieve_ms=380.55 llm_ms=575.49 total_ms=965.15 docs=6 selected_docs=4 top_k=6 answer_top_k=4
+2026-03-01 08:37:27 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+2026-03-01 08:37:27 | INFO | httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-01 08:37:33 | INFO | app.services.rag_service_fast | rag.ask_stream retrieve_ms=576.85 first_token_ms=371.68 total_ms=6228.56 docs=6 selected_docs=4 top_k=6 answer_top_k=4

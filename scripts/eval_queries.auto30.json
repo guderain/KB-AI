@@ -1,0 +1,122 @@
+[
+  {
+    "question": "请概括《Agent与RAG》的核心内容。",
+    "expected_source_keyword": "Agent与RAG"
+  },
+  {
+    "question": "请概括《Agent和Memory》的核心内容。",
+    "expected_source_keyword": "Agent和Memory"
+  },
+  {
+    "question": "请概括《Agent和Tool》的核心内容。",
+    "expected_source_keyword": "Agent和Tool"
+  },
+  {
+    "question": "请概括《Agent嵌入记忆-reAct与Function call，以及1 0中的实现》的核心内容。",
+    "expected_source_keyword": "Agent嵌入记忆-reAct与Function call，以及1 0中的实现"
+  },
+  {
+    "question": "请概括《Agent持久化记忆不同方案与生产最佳实践以及langchain1 0中的最佳实践》的核心内容。",
+    "expected_source_keyword": "Agent持久化记忆不同方案与生产最佳实践以及langchain1 0中的最佳实"
+  },
+  {
+    "question": "请概括《Agent概述》的核心内容。",
+    "expected_source_keyword": "Agent概述"
+  },
+  {
+    "question": "请概括《ConversationChain(已废弃)与现代写法RunnableWithMessageHist》的核心内容。",
+    "expected_source_keyword": "ConversationChain(已废弃)与现代写法RunnableWithM"
+  },
+  {
+    "question": "请概括《deepseek与qwen在策略上的差异》的核心内容。",
+    "expected_source_keyword": "deepseek与qwen在策略上的差异"
+  },
+  {
+    "question": "请概括《Dify不同模型接入mcp注意点(deepseek与qwen3)》的核心内容。",
+    "expected_source_keyword": "Dify不同模型接入mcp注意点(deepseek与qwen3)"
+  },
+  {
+    "question": "请概括《Dify认识与私有化部署》的核心内容。",
+    "expected_source_keyword": "Dify认识与私有化部署"
+  },
+  {
+    "question": "请概括《Docker支持GPU》的核心内容。",
+    "expected_source_keyword": "Docker支持GPU"
+  },
+  {
+    "question": "请概括《EJS模板引擎编写购物车页面。包含促销信息、运费信息、商品列表和普通 快速结账按钮⁠。》的核心内容。",
+    "expected_source_keyword": "EJS模板引擎编写购物车页面。包含促销信息、运费信息、商品列表和普通 快速结账按"
+  },
+  {
+    "question": "请概括《FAISS的使用》的核心内容。",
+    "expected_source_keyword": "FAISS的使用"
+  },
+  {
+    "question": "请概括《FewShotPromptTemplate》的核心内容。",
+    "expected_source_keyword": "FewShotPromptTemplate"
+  },
+  {
+    "question": "请概括《Github》的核心内容。",
+    "expected_source_keyword": "Github"
+  },
+  {
+    "question": "请概括《i18n(国际化)方案总结》的核心内容。",
+    "expected_source_keyword": "i18n(国际化)方案总结"
+  },
+  {
+    "question": "请概括《Jest fn()、Jest spyOn()、Jest mock()》的核心内容。",
+    "expected_source_keyword": "Jest fn()、Jest spyOn()、Jest mock()"
+  },
+  {
+    "question": "请概括《Jest及Vue test-uitls—配置》的核心内容。",
+    "expected_source_keyword": "Jest及Vue test-uitls—配置"
+  },
+  {
+    "question": "请概括《Jest及Vue test-utils使用(1)—正反向测试》的核心内容。",
+    "expected_source_keyword": "Jest及Vue test-utils使用(1)—正反向测试"
+  },
+  {
+    "question": "请概括《Jest及Vue test-utils使用(2)—时间格式化测试》的核心内容。",
+    "expected_source_keyword": "Jest及Vue test-utils使用(2)—时间格式化测试"
+  },
+  {
+    "question": "请概括《Jest及Vue test-utils使用(3)—条件测试》的核心内容。",
+    "expected_source_keyword": "Jest及Vue test-utils使用(3)—条件测试"
+  },
+  {
+    "question": "请概括《Jest及Vue test-utils使用(4)—点击测试》的核心内容。",
+    "expected_source_keyword": "Jest及Vue test-utils使用(4)—点击测试"
+  },
+  {
+    "question": "请概括《langchain V1 基础变动》的核心内容。",
+    "expected_source_keyword": "langchain V1 基础变动"
+  },
+  {
+    "question": "请概括《langchain中调用deepseek模型使用trim_messages报错原因》的核心内容。",
+    "expected_source_keyword": "langchain中调用deepseek模型使用trim_messages报错原"
+  },
+  {
+    "question": "请概括《LangChain入门(1)——模型引入与配置使用的三种方案》的核心内容。",
+    "expected_source_keyword": "LangChain入门(1)——模型引入与配置使用的三种方案"
+  },
+  {
+    "question": "请概括《LangChain入门(2)——invoke与stream区别》的核心内容。",
+    "expected_source_keyword": "LangChain入门(2)——invoke与stream区别"
+  },
+  {
+    "question": "请概括《LangChain入门(3)——构建prompt模板》的核心内容。",
+    "expected_source_keyword": "LangChain入门(3)——构建prompt模板"
+  },
+  {
+    "question": "请概括《LECL 结合 少样本 实现顺序链-多步骤流水线》的核心内容。",
+    "expected_source_keyword": "LECL 结合 少样本 实现顺序链-多步骤流水线"
+  },
+  {
+    "question": "请概括《MCP》的核心内容。",
+    "expected_source_keyword": "MCP"
+  },
+  {
+    "question": "请概括《memory设计理念》的核心内容。",
+    "expected_source_keyword": "memory设计理念"
+  }
+]
