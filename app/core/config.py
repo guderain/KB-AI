@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     OPENAI_MAX_RETRIES: int = 1
     OPENAI_MAX_TOKENS: int = 512
 
+    ENABLE_PROMPT_INJECTION_GUARD: bool = True
+    PROMPT_INJECTION_BLOCK_THRESHOLD: int = 4
+    ENABLE_CONTENT_SAFETY_AUDIT: bool = True
+    SAFETY_BLOCK_ON_INPUT: bool = True
+    SAFETY_BLOCK_ON_OUTPUT: bool = True
+
     MILVUS_URI: str = 'http://localhost:19530'
     MILVUS_TOKEN: str = ''
     MILVUS_COLLECTION: str = 'kb_chunks'

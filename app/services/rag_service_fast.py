@@ -13,6 +13,12 @@ from app.core.config import get_settings
 from app.db.postgres import SessionLocal
 from app.models.chat_log import ChatLog
 from app.services.dependencies import get_llm, get_redis_client, get_vector_store
+from app.services.safety_service import (
+    audit_model_output,
+    audit_user_question,
+    prompt_injection_guard_instruction,
+    sanitize_untrusted_context,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +45,12 @@ def _build_prompt(question: str, docs: list[Document], context_chars_per_doc: in
     context_lines: list[str] = []
     for idx, doc in enumerate(docs, start=1):
         source = doc.metadata.get('source', 'unknown')
-        excerpt = _trim_doc_text(doc.page_content, context_chars_per_doc)
+        excerpt = sanitize_untrusted_context(_trim_doc_text(doc.page_content, context_chars_per_doc))
         context_lines.append(f'[{idx}] source={source}\n{excerpt}')
     context = '\n\n'.join(context_lines)
+    guard_rule = prompt_injection_guard_instruction()
     return (
+        f'{guard_rule}'
         '你是知识库问答助手。必须使用简体中文回答。'
         '仅基于给定上下文作答；若上下文不足，请只回复：我不知道。'
         '回答保持简洁，并在句末标注引用编号，如 [1][2]。\n\n'
@@ -54,13 +62,15 @@ def _build_prompt(question: str, docs: list[Document], context_chars_per_doc: in
 def _build_web_prompt(question: str, web_results: list[dict[str, str]]) -> str:
     references: list[str] = []
     for idx, item in enumerate(web_results, start=1):
-        title = item.get('title', 'untitled')
+        title = sanitize_untrusted_context(item.get('title', 'untitled'))
         url = item.get('url', '')
-        snippet = item.get('snippet', '')
+        snippet = sanitize_untrusted_context(item.get('snippet', ''))
         references.append(f'[{idx}] title={title}\nurl={url}\nsnippet={snippet}')
 
     context = '\n\n'.join(references)
+    guard_rule = prompt_injection_guard_instruction()
     return (
+        f'{guard_rule}'
         '你是联网检索问答助手。必须使用简体中文回答。'
         '请基于提供的网页摘要回答问题，优先给出事实性、直接的结论。'
         '若信息冲突，请简要说明不确定性。'
@@ -395,8 +405,19 @@ def _answer_with_fallback(question: str, docs: list[Document]) -> tuple[str, lis
 def ask(question: str) -> tuple[str, list[str], bool]:
     total_start = time.perf_counter()
     settings = get_settings()
+    input_audit = audit_user_question(question)
+    normalized_question = input_audit.sanitized_text or question
+
+    if input_audit.blocked:
+        logger.warning(
+            'rag.ask blocked_input reason=%s labels=%s',
+            input_audit.reason,
+            ','.join(input_audit.labels),
+        )
+        return input_audit.block_message, [], False
+
     redis_client = get_redis_client()
-    cache_key = _cache_key(question)
+    cache_key = _cache_key(normalized_question)
     cached = redis_client.get(cache_key)
     if cached:
         data = json.loads(cached)
@@ -406,14 +427,23 @@ def ask(question: str) -> tuple[str, list[str], bool]:
     retrieve_start = time.perf_counter()
     vector_store = get_vector_store()
     retriever = vector_store.as_retriever(search_kwargs={'k': settings.TOP_K})
-    docs = retriever.invoke(question)
+    docs = retriever.invoke(normalized_question)
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000
 
-    answer, sources, mode = _answer_with_fallback(question, docs)
+    answer, sources, mode = _answer_with_fallback(normalized_question, docs)
     answer = _normalize_cn_answer(answer)
+    output_audit = audit_model_output(answer)
+    if output_audit.blocked:
+        logger.warning(
+            'rag.ask blocked_output reason=%s labels=%s',
+            output_audit.reason,
+            ','.join(output_audit.labels),
+        )
+        answer = output_audit.block_message
+        sources = []
 
     # Do not cache unknown answers; otherwise temporary network issues can poison cache.
-    if not _looks_unknown(answer):
+    if not _looks_unknown(answer) and not output_audit.blocked:
         redis_client.setex(cache_key, settings.CACHE_TTL_SECONDS, json.dumps({'answer': answer, 'sources': sources}))
     logger.info(
         'rag.ask cache_hit=False mode=%s retrieve_ms=%.2f total_ms=%.2f docs=%d',
@@ -435,15 +465,39 @@ def _chunk_text(text: str, chunk_size: int = 24) -> Iterator[str]:
 def ask_stream(question: str) -> tuple[list[str], Iterator[str]]:
     total_start = time.perf_counter()
     settings = get_settings()
+    input_audit = audit_user_question(question)
+    normalized_question = input_audit.sanitized_text or question
+
+    if input_audit.blocked:
+        logger.warning(
+            'rag.ask_stream blocked_input reason=%s labels=%s',
+            input_audit.reason,
+            ','.join(input_audit.labels),
+        )
+
+        def _blocked_stream() -> Iterator[str]:
+            yield input_audit.block_message
+
+        return [], _blocked_stream()
+
     vector_store = get_vector_store()
     retriever = vector_store.as_retriever(search_kwargs={'k': settings.TOP_K})
 
     retrieve_start = time.perf_counter()
-    docs = retriever.invoke(question)
+    docs = retriever.invoke(normalized_question)
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000
 
-    answer, sources, mode = _answer_with_fallback(question, docs)
+    answer, sources, mode = _answer_with_fallback(normalized_question, docs)
     answer = _normalize_cn_answer(answer)
+    output_audit = audit_model_output(answer)
+    if output_audit.blocked:
+        logger.warning(
+            'rag.ask_stream blocked_output reason=%s labels=%s',
+            output_audit.reason,
+            ','.join(output_audit.labels),
+        )
+        answer = output_audit.block_message
+        sources = []
 
     def _stream() -> Iterator[str]:
         for chunk in _chunk_text(answer):
