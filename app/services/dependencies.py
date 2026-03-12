@@ -7,10 +7,11 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from app.core.config import get_settings
 
-
+# lru_cache 是 Python 内置的缓存装饰器，用于缓存函数的结果，避免重复计算
+# 这里缓存 httpx.Client 和 httpx.AsyncClient 实例，避免重复创建
 @lru_cache
 def get_http_client() -> httpx.Client:
-    # Ignore system proxy env vars to avoid accidental proxy hijacking.
+    # 忽略系统代理环境变量，避免意外的代理劫持
     return httpx.Client(trust_env=False, timeout=60.0)
 
 

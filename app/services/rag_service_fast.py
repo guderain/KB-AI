@@ -1,8 +1,10 @@
+import asyncio
 import hashlib
 import json
 import logging
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from html import unescape as html_unescape
 from typing import Iterator
 from urllib.parse import parse_qs, unquote, urlparse
@@ -217,6 +219,32 @@ def _keyword_retrieve(question: str, top_k: int) -> list[Document]:
     return docs
 
 
+# 线程池用于执行同步的数据库和向量检索操作
+_retrieval_executor = ThreadPoolExecutor(max_workers=4)
+
+
+async def _keyword_retrieve_async(question: str, top_k: int) -> list[Document]:
+    """异步版本的关键词检索，在线程池中执行同步数据库查询。"""
+    # 获取当前线程的事件循环
+    loop = asyncio.get_running_loop()
+    # 在事件循环中执行同步关键词检索
+    return await loop.run_in_executor(_retrieval_executor, _keyword_retrieve, question, top_k)
+
+
+async def _vector_retrieve_async(question: str, top_k: int) -> list[Document]:
+    """异步版本的向量检索，在线程池中执行同步向量查询。"""
+    settings = get_settings()
+    vector_store = get_vector_store()
+    vector_retriever = vector_store.as_retriever(search_kwargs={'k': top_k})
+
+    def _sync_invoke() -> list[Document]:
+        return vector_retriever.invoke(question)
+    # 获取当前线程的事件循环
+    loop = asyncio.get_running_loop()
+    # 在事件循环中执行同步查询
+    return await loop.run_in_executor(_retrieval_executor, _sync_invoke)
+
+
 def _fuse_retrieved_docs(vector_docs: list[Document], keyword_docs: list[Document], top_k: int) -> list[Document]:
     if top_k <= 0:
         return []
@@ -251,13 +279,18 @@ def _fuse_retrieved_docs(vector_docs: list[Document], keyword_docs: list[Documen
     # 返回前 top_k 个 Document 实例
     return [doc_map[key] for key in ranked_keys[:top_k]]
 
-
 def _rerank_docs(question: str, docs: list[Document], top_k: int, candidate_k: int) -> list[Document]:
     settings = get_settings()
     if not docs or top_k <= 0:
         return []
-    candidates = docs[: max(top_k, candidate_k)]
+    # 截取前 候选集数量 个文档
+    candidates = docs[:candidate_k]
+    # 截取候选集中每个文档的前 最大文档字符数 个字符
+    # Reranker 模型有输入长度限制（通常是 512/1024 tokens）
+        # 过长的文档会增加 API 成本和延迟
+        # 超过 2000 字符的部分对相关性判断影响很小
     texts = [(doc.page_content or '')[: settings.RETRIEVAL_RERANK_MAX_DOC_CHARS] for doc in candidates]
+    # 如果文本为空，返回候选集前 top_k 个文档
     if not texts:
         return candidates[:top_k]
 
@@ -266,18 +299,21 @@ def _rerank_docs(question: str, docs: list[Document], top_k: int, candidate_k: i
         logger.warning('reranker api_key empty, fallback to fused order')
         return candidates[:top_k]
 
+    # 只返回排序后的索引列表，不返回文档内容，减少网络传输
     request_body = {
         'model': settings.RETRIEVAL_RERANK_MODEL,
         'input': {'query': question, 'documents': texts},
         'parameters': {'top_n': len(texts), 'return_documents': False},
     }
     try:
+        # 发送请求到 reranker 服务
         resp = get_http_client().post(
             settings.RETRIEVAL_RERANK_ENDPOINT,
             headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
             json=request_body,
             timeout=settings.RETRIEVAL_RERANK_TIMEOUT_SECONDS,
         )
+        # 如果响应状态码大于等于 400，记录错误日志
         if resp.status_code >= 400:
             logger.warning(
                 'reranker http_failed status=%s body=%s',
@@ -285,42 +321,66 @@ def _rerank_docs(question: str, docs: list[Document], top_k: int, candidate_k: i
                 (resp.text or '')[:200],
             )
             return candidates[:top_k]
+ 
         payload = resp.json()
     except Exception:
         logger.exception('reranker request failed, fallback to fused order')
         return candidates[:top_k]
 
+    # 解析响应体
+    # API 返回格式示例：
+    # {
+    #     "output": {
+    #     "results": [
+    #         {"index": 3, "relevance_score": 0.95},  // 原文档索引 3，最相关
+    #         {"index": 0, "relevance_score": 0.87},  // 原文档索引 0
+    #         {"index": 5, "relevance_score": 0.82}   // 原文档索引 5
+    #     ]
+    #     }
+    # }
     results = ((payload.get('output') or {}).get('results') or []) if isinstance(payload, dict) else []
+    # 初始化 ranked 列表
     ranked: list[Document] = []
+    # 初始化 used 集合
     used: set[int] = set()
+    # 遍历 results 列表
     for row in results:
+        # 获取索引
         idx = row.get('index') if isinstance(row, dict) else None
+        # 如果索引是整数，且在候选集中，且未被使用过，记录文档到 ranked 列表
         if isinstance(idx, int) and 0 <= idx < len(candidates) and idx not in used:
+            # 按 Reranker 顺序取文档
             ranked.append(candidates[idx])
+            # 记录索引到 used 集合
             used.add(idx)
 
     if not ranked:
         logger.warning('reranker empty_results, fallback to fused order')
         return candidates[:top_k]
 
-    # Keep order stable and fill missing docs if reranker did not return all indices.
+    # 如果 Reranker 返回不足，按原顺序补足
     if len(ranked) < top_k:
+        # 遍历候选集
         for idx, doc in enumerate(candidates):
+            # 如果索引未被使用过，记录文档到 ranked 列表
             if idx not in used:
                 ranked.append(doc)
+            # 如果 ranked 列表长度大于等于 top_k，退出循环
             if len(ranked) >= top_k:
                 break
     return ranked[:top_k]
 
 
-def _hybrid_retrieve(question: str, top_k: int) -> tuple[list[Document], int, int, int]:
+async def _hybrid_retrieve_async(question: str, top_k: int) -> tuple[list[Document], int, int, int]:
+    """异步版本的混合检索，并行执行向量召回和关键词召回。"""
     settings = get_settings()
-    vector_store = get_vector_store()
-    vector_retriever = vector_store.as_retriever(search_kwargs={'k': settings.RETRIEVAL_VECTOR_TOP_K})
-    # 向量召回
-    vector_docs = vector_retriever.invoke(question)
-    # 关键词召回
-    keyword_docs = _keyword_retrieve(question=question, top_k=settings.RETRIEVAL_KEYWORD_TOP_K)
+
+    # 并行执行向量召回和关键词召回
+    vector_task = _vector_retrieve_async(question, settings.RETRIEVAL_VECTOR_TOP_K)
+    keyword_task = _keyword_retrieve_async(question, settings.RETRIEVAL_KEYWORD_TOP_K)
+
+    vector_docs, keyword_docs = await asyncio.gather(vector_task, keyword_task)
+
     # 召回结果融合 给reranker候选
     fused_docs = _fuse_retrieved_docs(
         vector_docs=vector_docs,
@@ -339,6 +399,38 @@ def _hybrid_retrieve(question: str, top_k: int) -> tuple[list[Document], int, in
     else:
         final_docs = fused_docs[:top_k]
     # 返回最终结果、向量召回结果数量、关键词召回结果数量、融合结果数量
+    return final_docs, len(vector_docs), len(keyword_docs), len(fused_docs)
+
+
+def _hybrid_retrieve(question: str, top_k: int) -> tuple[list[Document], int, int, int]:
+    """混合检索（同步入口），优先走异步并行；检测到运行中 loop 时回退同步。"""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        # 当前线程没有运行中的事件循环，可安全使用 asyncio.run。
+        return asyncio.run(_hybrid_retrieve_async(question, top_k))
+
+    # 有运行中 event loop：不再用 run_coroutine_threadsafe(...).result()，改为同步回退路径，避免潜在死锁/阻塞
+    logger.warning('hybrid_retrieve running_loop_detected fallback=sync')
+    settings = get_settings()
+    vector_store = get_vector_store()
+    vector_retriever = vector_store.as_retriever(search_kwargs={'k': settings.RETRIEVAL_VECTOR_TOP_K})
+    vector_docs = vector_retriever.invoke(question)
+    keyword_docs = _keyword_retrieve(question=question, top_k=settings.RETRIEVAL_KEYWORD_TOP_K)
+    fused_docs = _fuse_retrieved_docs(
+        vector_docs=vector_docs,
+        keyword_docs=keyword_docs,
+        top_k=max(top_k, settings.RETRIEVAL_RERANK_CANDIDATE_K),
+    )
+    if settings.ENABLE_RETRIEVAL_RERANKER:
+        final_docs = _rerank_docs(
+            question=question,
+            docs=fused_docs,
+            top_k=top_k,
+            candidate_k=settings.RETRIEVAL_RERANK_CANDIDATE_K,
+        )
+    else:
+        final_docs = fused_docs[:top_k]
     return final_docs, len(vector_docs), len(keyword_docs), len(fused_docs)
 
 
@@ -583,7 +675,8 @@ def _answer_with_fallback(question: str, docs: list[Document]) -> tuple[str, lis
         prompt = _build_prompt(question, selected_docs, settings.CONTEXT_CHARS_PER_DOC)
         answer = llm.invoke(prompt).content or ''
         answer = _normalize_cn_answer(answer)
-        sources = list(dict.fromkeys(doc.metadata.get('source', 'unknown') for doc in docs))
+        # 只返回实际用于生成答案的文档来源
+        sources = list(dict.fromkeys(doc.metadata.get('source', 'unknown') for doc in selected_docs))
         if not settings.ENABLE_WEB_FALLBACK or not _looks_unknown(answer):
             return answer, sources, 'kb'
     else:
