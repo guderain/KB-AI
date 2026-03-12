@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     CHUNK_SIZE: int = 800
     CHUNK_OVERLAP: int = 160
     TOP_K: int = 6
+    RETRIEVAL_VECTOR_TOP_K: int = 10
+    RETRIEVAL_KEYWORD_TOP_K: int = 10
+    ENABLE_RETRIEVAL_RERANKER: bool = True
+    RETRIEVAL_RERANK_CANDIDATE_K: int = 20
+    RETRIEVAL_RERANK_MODEL: str = 'gte-rerank-v2'
+    RETRIEVAL_RERANK_ENDPOINT: str = 'https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank'
+    RETRIEVAL_RERANK_TIMEOUT_SECONDS: float = 12.0
+    RETRIEVAL_RERANK_MAX_DOC_CHARS: int = 2000
     ANSWER_TOP_K: int = 4
     CONTEXT_CHARS_PER_DOC: int = 800
     ENABLE_WEB_FALLBACK: bool = True
