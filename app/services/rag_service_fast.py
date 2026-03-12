@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import json
 import logging
 import re
@@ -8,10 +8,12 @@ from typing import Iterator
 from urllib.parse import parse_qs, unquote, urlparse
 
 from langchain_core.documents import Document
+from sqlalchemy import or_, select
 
 from app.core.config import get_settings
 from app.db.postgres import SessionLocal
 from app.models.chat_log import ChatLog
+from app.models.chunk import ChunkMetadata
 from app.services.dependencies import get_llm, get_redis_client, get_vector_store
 from app.services.safety_service import (
     audit_model_output,
@@ -139,6 +141,93 @@ def _filter_relevant_results(query: str, results: list[dict[str, str]]) -> list[
         return []
     # Keep reasonably related results.
     return [item for item, score in scored if score > 0]
+
+
+def _doc_key(doc: Document) -> tuple[str, str]:
+    source = str(doc.metadata.get('source', 'unknown'))
+    content = ' '.join((doc.page_content or '').split())
+    return source, content
+
+
+def _keyword_retrieve(question: str, top_k: int) -> list[Document]:
+    if top_k <= 0:
+        return []
+    tokens = [t for t in _query_tokens(question) if t]
+    if not tokens:
+        return []
+
+    # Keep SQL condition set small to avoid heavy full scans.
+    tokens = tokens[:8]
+    conditions = [ChunkMetadata.content.ilike(f'%{token}%') for token in tokens]
+    if not conditions:
+        return []
+
+    db = SessionLocal()
+    try:
+        # Fetch a limited candidate set, then score in Python for light keyword ranking.
+        candidate_limit = max(top_k * 8, 30)
+        stmt = select(ChunkMetadata).where(or_(*conditions)).limit(candidate_limit)
+        rows = db.execute(stmt).scalars().all()
+    except Exception:
+        logger.exception('keyword retrieve failed')
+        return []
+    finally:
+        db.close()
+
+    scored: list[tuple[int, ChunkMetadata]] = []
+    for row in rows:
+        hay = f'{row.title or ""} {row.content or ""}'.lower()
+        score = 0
+        for token in tokens:
+            if token in hay:
+                score += 2 if len(token) >= 4 else 1
+        if score > 0:
+            scored.append((score, row))
+
+    scored.sort(key=lambda item: item[0], reverse=True)
+    docs: list[Document] = []
+    for _, row in scored[:top_k]:
+        docs.append(
+            Document(
+                page_content=row.content or '',
+                metadata={'source': row.source or 'unknown', 'title': row.title or '', 'retrieval': 'keyword'},
+            )
+        )
+    return docs
+
+
+def _fuse_retrieved_docs(vector_docs: list[Document], keyword_docs: list[Document], top_k: int) -> list[Document]:
+    if top_k <= 0:
+        return []
+    # Reciprocal Rank Fusion: robust for heterogeneous retrievers.
+    k = 60.0
+    score_map: dict[tuple[str, str], float] = {}
+    doc_map: dict[tuple[str, str], Document] = {}
+
+    for rank, doc in enumerate(vector_docs):
+        key = _doc_key(doc)
+        score_map[key] = score_map.get(key, 0.0) + (1.0 / (k + rank + 1))
+        doc_map[key] = doc
+
+    for rank, doc in enumerate(keyword_docs):
+        key = _doc_key(doc)
+        score_map[key] = score_map.get(key, 0.0) + (1.0 / (k + rank + 1))
+        # Prefer preserving vector-doc metadata when both exist.
+        if key not in doc_map:
+            doc_map[key] = doc
+
+    ranked_keys = sorted(score_map.keys(), key=lambda item: score_map[item], reverse=True)
+    return [doc_map[key] for key in ranked_keys[:top_k]]
+
+
+def _hybrid_retrieve(question: str, top_k: int) -> tuple[list[Document], int, int]:
+    vector_store = get_vector_store()
+    vector_retriever = vector_store.as_retriever(search_kwargs={'k': top_k})
+    vector_docs = vector_retriever.invoke(question)
+
+    keyword_docs = _keyword_retrieve(question=question, top_k=top_k)
+    fused_docs = _fuse_retrieved_docs(vector_docs=vector_docs, keyword_docs=keyword_docs, top_k=top_k)
+    return fused_docs, len(vector_docs), len(keyword_docs)
 
 
 def _parse_bing_results(html: str, max_results: int) -> list[dict[str, str]]:
@@ -425,9 +514,7 @@ def ask(question: str) -> tuple[str, list[str], bool]:
         return data['answer'], data['sources'], True
 
     retrieve_start = time.perf_counter()
-    vector_store = get_vector_store()
-    retriever = vector_store.as_retriever(search_kwargs={'k': settings.TOP_K})
-    docs = retriever.invoke(normalized_question)
+    docs, vector_count, keyword_count = _hybrid_retrieve(normalized_question, settings.TOP_K)
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000
 
     answer, sources, mode = _answer_with_fallback(normalized_question, docs)
@@ -446,11 +533,13 @@ def ask(question: str) -> tuple[str, list[str], bool]:
     if not _looks_unknown(answer) and not output_audit.blocked:
         redis_client.setex(cache_key, settings.CACHE_TTL_SECONDS, json.dumps({'answer': answer, 'sources': sources}))
     logger.info(
-        'rag.ask cache_hit=False mode=%s retrieve_ms=%.2f total_ms=%.2f docs=%d',
+        'rag.ask cache_hit=False mode=%s retrieve_ms=%.2f total_ms=%.2f docs=%d vector_docs=%d keyword_docs=%d',
         mode,
         retrieve_ms,
         (time.perf_counter() - total_start) * 1000,
         len(docs),
+        vector_count,
+        keyword_count,
     )
     return answer, sources, False
 
@@ -480,11 +569,8 @@ def ask_stream(question: str) -> tuple[list[str], Iterator[str]]:
 
         return [], _blocked_stream()
 
-    vector_store = get_vector_store()
-    retriever = vector_store.as_retriever(search_kwargs={'k': settings.TOP_K})
-
     retrieve_start = time.perf_counter()
-    docs = retriever.invoke(normalized_question)
+    docs, vector_count, keyword_count = _hybrid_retrieve(normalized_question, settings.TOP_K)
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000
 
     answer, sources, mode = _answer_with_fallback(normalized_question, docs)
@@ -504,11 +590,13 @@ def ask_stream(question: str) -> tuple[list[str], Iterator[str]]:
             yield chunk
 
         logger.info(
-            'rag.ask_stream mode=%s retrieve_ms=%.2f total_ms=%.2f docs=%d',
+            'rag.ask_stream mode=%s retrieve_ms=%.2f total_ms=%.2f docs=%d vector_docs=%d keyword_docs=%d',
             mode,
             retrieve_ms,
             (time.perf_counter() - total_start) * 1000,
             len(docs),
+            vector_count,
+            keyword_count,
         )
 
     return sources, _stream()
