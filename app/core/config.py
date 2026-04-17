@@ -65,6 +65,20 @@ class Settings(BaseSettings):
     INGEST_RATE_LIMIT_PER_MINUTE: int = 10
     AUTO_INGEST_ON_STARTUP: bool = True
 
+    # Parser 配置
+    ENABLE_IMAGE_OCR: bool = True
+    ENABLE_IMAGE_CAPTION: bool = True
+    OCR_API_KEY: str = ''
+    OCR_API_ENDPOINT: str = ''
+    VISION_API_KEY: str = ''
+    VISION_API_ENDPOINT: str = ''
+    VISION_MODEL: str = 'gpt-4o'
+
+    EXCEL_MAX_ROWS_PER_SHEET: int = 5000
+    EXCEL_ENABLE_SHEET_SUMMARY: bool = True
+
+    PARSER_FALLBACK_TO_PLAINTEXT: bool = True
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [item.strip() for item in self.CORS_ORIGINS.split(',') if item.strip()]
