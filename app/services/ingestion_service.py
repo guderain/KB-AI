@@ -14,6 +14,7 @@ from app.db.postgres import SessionLocal
 from app.models.chunk import ChunkMetadata
 from app.models.doc_index import DocIndex
 from app.services.dependencies import get_vector_store
+from app.services.parsers import ParserPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -31,16 +32,20 @@ def _chunk_id(source: str, file_hash: str, index: int) -> str:
     return hashlib.sha1(raw.encode('utf-8')).hexdigest()
 
 
-def _scan_md_files(root: str) -> list[Path]:
-    return [p for p in Path(root).rglob('*.md') if p.is_file()]
+_pipeline = ParserPipeline()
 
 
-def _load_file_doc(path: Path) -> Document:
-    loader = TextLoader(str(path), encoding='utf-8')
-    docs = loader.load()
-    if not docs:
-        return Document(page_content='', metadata={'source': str(path)})
-    return docs[0]
+def _scan_files(root: str) -> list[Path]:
+    supported_exts = {'.md', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp'}
+    results: list[Path] = []
+    for p in Path(root).rglob('*'):
+        if p.is_file() and p.suffix.lower() in supported_exts:
+            results.append(p)
+    return sorted(results)
+
+
+def _load_file_docs(path: Path) -> list[Document]:
+    return _pipeline.parse_file(path)
 
 
 def _build_splitter() -> RecursiveCharacterTextSplitter:
@@ -111,14 +116,15 @@ def _upsert_doc_index(db, source: str, file_hash: str, chunks_count: int) -> Non
 
 def reindex() -> tuple[int, int]:
     settings = get_settings()
-    files = _scan_md_files(settings.KNOWLEDGE_BASE_DIR)
+    files = _scan_files(settings.KNOWLEDGE_BASE_DIR)
     docs: list[Document] = []
     file_hash_map: dict[str, str] = {}
 
     for path in files:
-        doc = _load_file_doc(path)
-        docs.append(doc)
-        file_hash_map[str(path)] = _hash_text(doc.page_content)
+        file_docs = _load_file_docs(path)
+        docs.extend(file_docs)
+        combined_text = ''.join(d.page_content for d in file_docs)
+        file_hash_map[str(path)] = _hash_text(combined_text)
 
     splitter = _build_splitter()
     chunks = splitter.split_documents(docs)
@@ -184,7 +190,7 @@ def incremental_reindex(allow_destructive_migration: bool = False) -> dict[str, 
             row_count,
         )
         return {
-            'files_total': len(_scan_md_files(settings.KNOWLEDGE_BASE_DIR)),
+            'files_total': len(_scan_files(settings.KNOWLEDGE_BASE_DIR)),
             'files_changed': 0,
             'files_removed': 0,
             'chunks_inserted': 0,
@@ -193,15 +199,16 @@ def incremental_reindex(allow_destructive_migration: bool = False) -> dict[str, 
             'needs_full_reindex': 1,
         }
 
-    files = _scan_md_files(settings.KNOWLEDGE_BASE_DIR)
-    current_docs: dict[str, Document] = {}
+    files = _scan_files(settings.KNOWLEDGE_BASE_DIR)
+    current_docs_map: dict[str, list[Document]] = {}
     current_hashes: dict[str, str] = {}
 
     for path in files:
-        doc = _load_file_doc(path)
+        file_docs = _load_file_docs(path)
         source = str(path)
-        current_docs[source] = doc
-        current_hashes[source] = _hash_text(doc.page_content)
+        current_docs_map[source] = file_docs
+        combined_text = ''.join(d.page_content for d in file_docs)
+        current_hashes[source] = _hash_text(combined_text)
 
     db = SessionLocal()
     try:
@@ -224,7 +231,9 @@ def incremental_reindex(allow_destructive_migration: bool = False) -> dict[str, 
             db.execute(delete(DocIndex).where(DocIndex.source == source))
 
         splitter = _build_splitter()
-        changed_docs = [current_docs[source] for source in changed_sources]
+        changed_docs: list[Document] = []
+        for source in changed_sources:
+            changed_docs.extend(current_docs_map[source])
         changed_chunks = splitter.split_documents(changed_docs) if changed_docs else []
 
         inserted_chunks = 0
@@ -271,7 +280,7 @@ def incremental_reindex(allow_destructive_migration: bool = False) -> dict[str, 
 
 def ensure_index_ready_on_startup() -> dict[str, int | bool | str]:
     settings = get_settings()
-    files = _scan_md_files(settings.KNOWLEDGE_BASE_DIR)
+    files = _scan_files(settings.KNOWLEDGE_BASE_DIR)
     if not files:
         return {
             'triggered': False,
