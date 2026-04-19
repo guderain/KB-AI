@@ -14,3 +14,12 @@ psycopg[binary]==3.2.9
 python-dotenv==1.0.1
 markdown==3.7
 setuptools<81
+unstructured==0.16.0
+pdf2image==1.17.0
+pikepdf==9.0.0
+python-docx==1.1.2
+pandas==2.2.3
+openpyxl==3.1.5
+Pillow==11.0.0
+xlrd==2.0.1
+reportlab==4.3.0
